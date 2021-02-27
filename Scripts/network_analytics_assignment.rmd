@@ -471,7 +471,30 @@ Examine the results.
 **Response 4.1**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
 
 ```{r, task4_1}
+#1, degree of nodes
+degree(team_net)
+#2, second-order neighborhood size excluding the focal node
+neighborhood.size(team_net,order = 2) - 1
+#3, number of triangles
+count_triangles(team_net)
+#4, local transitivity
+transitivity(team_net, type = "local")
+#5 betweenness centrality
+betweenness(team_net)
+#6, closeness centrality
+closeness(team_net)
+#7, eigenvector centrality
+eigen_centrality(team_net, scale = FALSE)
+#8, PageRank
+page_rank(team_net, damping = 0.9, personalized = NULL)
 
+#the remaining nodes
+team_adj %*%
+  as.numeric(V(team_net)$status == "R")
+
+#the neighbors who left
+team_adj %*%
+  as.numeric(V(team_net)$status == "L")
 ```
 
 ## Task 5: Import Data
