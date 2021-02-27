@@ -366,6 +366,38 @@ Examine the plot.
 **Responses 3.1**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
 
 ```{r, task3_1}
+#updating node attributes
+V(team_net)$status[c(5,6)] <- "R"
+
+V(team_net)$color[c(5,6)] <- "blue"
+
+#adding edge lables
+E(team_net)$label <-
+  c(
+    "RL", "RR", "RR", "LL", "LL", "RR", "RL",
+    "RR", "RR", "RR", "RL", "RL", "RL", "RR",
+    "RL", "RR", "RR", "RR", "RR", "RR", "RR"
+    )
+
+#se color for remain
+E(team_net)$color <- E(team_net)$label
+
+#alter for remain
+E(team_net)$color <- str_replace(E(team_net)$color, "RR", "blue") 
+#alter for left
+E(team_net)$color <- str_replace(E(team_net)$color, "LL", "red") 
+#alter for unknown
+E(team_net)$color <- str_replace(E(team_net)$color, "RL", "purple")
+
+#plot updated collaboration network
+plot(
+  team_net,
+  layout = ver_pos,
+  vertex.size = 35,
+  vertex.label.color = "black",
+  edge.label = NA,
+  edge.width = 3
+)
 
 ```
 
@@ -389,7 +421,24 @@ Examine the results.
 **Responses 3.2**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
 
 ```{r, task3_2}
+#1, network conncetedness
+edge_density(team_net)
 
+#2, dyadicity of remain nodes
+sum(E(team_net)$label == "RR") /
+  (edge_density(team_net) *
+     (sum(V(team_net)$status == "R") * (sum(V(team_net)$status == "R") - 1) / 2))
+
+#3, dyadicity of left nodes
+sum(E(team_net)$label == "LL") /
+  (edge_density(team_net) *
+     (sum(V(team_net)$status == "L") * (sum(V(team_net)$status == "L") - 1) / 2))
+
+#4, heterophilicity of network
+sum(E(team_net)$label == "RL") /
+  (edge_density(team_net) *
+     sum(V(team_net)$status == "R") * 
+     sum(V(team_net)$status == "L"))
 ```
 
 ## Task 4: Network Node Measures
