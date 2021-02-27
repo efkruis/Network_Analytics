@@ -514,7 +514,10 @@ You will work with the complete network for this assignment.
 **Responses 5.1**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
 
 ```{r, task5_1}
+load(
+  here("data", "employee_net.rdata") )
 
+glimpse(nodes)
 ```
 
 ## Task 6: Table Graph
