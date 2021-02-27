@@ -1,0 +1,612 @@
+---
+title: "Assignment: Predicting Employee Churn with Network Analytics"
+author: "Emma Kruis"
+date: "2020-01-18"
+output:
+  pdf_document: default
+  word_document: default
+  html_notebook: default
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+## Instructions
+
+This assignment reviews the *Network Analytics* content. 
+You will use the *network_analytics.Rmd* file I reviewed as part of the lectures for this week to complete this assignment. 
+You will *copy and paste* relevant code from that file and update it to answer the questions in this assignment. 
+You will respond to questions in each section after executing relevant code to answer a question. 
+You will submit this assignment to its *Submissions* folder on *D2L*.
+You will submit *two* files:
+
+1. this completed *R Markdown* script, and 
+2. as a first preference, a *PDF* (if you already installed `TinyTeX` properly), as a second preference, a *Microsfot Word* (if your computer has *Microsoft Word*) document, or, as a third preference, an *HTML* (if you did *not* install `TinyTeX` properly and your computer does *not* have *Microsoft Word*) file to *D2L*.
+
+To start:
+
+First, create a folder on your computer to save all relevant files for this course. 
+If you did not do so already, you will want to create a folder named *mgt_592* that contains all of the materials for this course.
+
+Second, inside of *mgt_592*, you will create a folder to host assignments.
+You can name that folder *assignments*.
+
+Third, inside of *assignments*, you will create folders for each assignment.
+You can name the folder for this first assignment: *network_analytics*.
+
+Fourth, create three additional folders in *network_analytics* named *scripts*, *data*, and *plots*.
+Store this script in the *scripts* folder and the data for this assignment in the *data* folder.
+
+Fifth, go to the *File* menu in *RStudio*, select *New Project...*, choose *Existing Directory*, go to your *~/mgt_592/assignments/network_analytics* folder to select it as the top-level directory for this **R Project**.  
+
+## Global Settings
+
+The first code chunk sets the global settings for the remaining code chunks in the document.
+Do *not* change anything in this code chunk.
+
+```{r, setup, include = FALSE}
+### specify echo setting for all code chunks
+## call function
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load Packages
+
+In this code chunk, we load the following packages:
+
+1. **here**,
+2. **tidyverse**,
+3. **tidymodels**, 
+4. **corrr**,
+5. **igraph**,
+6. **tidygraph**, and
+7. **ggraph**.
+
+Make sure you installed these packages when you reviewed the analytical lecture.
+
+We will use functions from these packages to examine the data. 
+Do *not* change anything in this code chunk.
+
+```{r, libraries, message = FALSE}
+### load libraries for use in current working session
+## here for project work flow
+library(here)
+
+## tidyverse for data manipulation and plotting
+## loads eight different libraries simultaneously
+library(tidyverse)
+
+## tidymodels for modeling
+library(tidymodels)
+
+## corrr for correlation matrices
+library(corrr)
+
+## igraph for analyzing networks
+library(igraph)
+
+## tidygraph for graph data tables
+library(tidygraph)
+
+## ggraph for plotting networks
+library(ggraph)
+```
+
+## Task 1: Create Network
+
+For this task, you will create a small collaboration network.
+
+### Task 1.1
+
+Create a *data frame* named **team_collab** that represents an *edges* data table of a network.
+Make the following *21* connections:
+
+1. *Pavle* is connected to *Luka*, *Sanja*, and *Nikola*;
+2. *Ana* is connected to *Milan* and *Vera*;
+3. *Sanja* is connected to *Jelena* and *Olga*;
+4. *Lazar* is connected to *Milena*, *Vedran*, and *Sanja*;
+5. *Vedran* is connected to *Olga* and *Vera*;
+6. *Nikola* is connected to *Olga*, *Lazar*, and *Milan*;
+7. *Jelena* is connected to *Milena*, *Nikola*, and *Vedran*;
+8. *Milena* is connected to *Pavle*, *Vedran*, and *Sanja*.
+
+Make sure the senders are listed in this order.
+Convert the *data table* to a *undirected* network named **team_net** using **graph_from_data_frame()**.
+
+Create a new vertex **status** attribute in **team_net** for the nodes by setting **V(team_net)$status** to **c("R", "L", "R", "R", "U", "U", "R", "R", "L", "L", "L", "L")**.
+Copy the **status** attribute into a **color** vertex attribute.
+Then, convert an **R** into a **blue** color, an **L** into a **red** color, and an **U** into a **gray** color.
+
+Create a vertex position matrix named **ver_pos** using **cbind()**.
+Set the first column equal to **c(5, 25, 13, 1, 25, 5, 8, 20, 1, 15, 25, 13)**.
+Set the second column equal to **c(20, 1, 23, 13, 16, 3, 10, 20, 25, 2, 10, 8)**.
+
+Plot the updated **team_net** using **plot()**.
+Set the edge labels to **NA** and color to **black**.
+Set the layout to **ver_pos**.
+Set the vertex labels to **V(team_net)$name** and label colors to **white**.
+Set the vertex colors to **V(team_net)$color** and size to **35**.
+
+Examine the plot.
+
+**Questions 1.1**: Answer these questions:
+(1) Did *Milena* leave?
+(2) How many connections does *Vedran* have to individuals who *remain* versus *left* the team?
+(3) How many individuals connect to *five* other teammates?
+
+**Responses 1.1**: *(1) No, Milena remained; (2) 3 connections to those who remain and 2 connections to those who left the team for Vedran; (3) Vedran, Nikola, Sanja, and Milena*.
+
+```{r, task1_1}
+
+```
+
+## Task 2: Relational Neighbor Classifier
+
+For this task, you will compute the (probabilistic) relational neighbor classifier.
+
+### Task 2.1
+
+Compute the probability of individuals remaining in the team based on their neighbors.
+
+First, convert **team_net** to a *long data frame* named **team_att** containing the node attributes.
+Second, create **node_sender_summ** from **team_att** by: grouping by **from_name**, *summarizing* the number of individuals with remain, left, and unknown **to_status**, and *renaming* the variable **from_name** to simply **name**.
+Third, create **node_receiver_summ** from **team_att** by: grouping by **to_name**, *summarizing* the number of individuals with remain, left, and unknown **from_status**, and *renaming* the variable **to_name** to simply **name**.
+Finally, create **node_summ** by row binding the two data tables **node_sender_summ** and **node_receiver_summ**, group by **name**, sum across all variables, and compute via **mutate()** (1) the total number of connected collaborators who remain or left the team and (2) the probability of connected collaborators remaining with respect to the total number who remain or left the team.
+
+Print **node_summ**.
+
+**Questions 2.1**: Answer these questions:
+(1) How many total collaborators with a known *status* are there for *Lazar*?
+(2) What is the probability of *Vedran* remaining based on the relational neighbor classifier?
+
+**Responses 2.1**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
+
+```{r, task2_1}
+
+```
+
+### Task 2.2
+
+You will now compute a probabilistic neighbor classifier.
+
+Now, consider an altered collaboration network by applying **plot()** to **team_net** with the layout set to **ver_pos**, the vertex color set to **gray**, and the vertex size set to **35**.
+
+Next, extract the adjacency matrix of **team_net** and save it as **team_adj**.  
+Set the seed of your computer to **1736**.
+Create an initial probability vector of individuals remaining on the team represented by **team_net** named **remain_prob** by using **runif(12, 0, 1)**.
+Set the names of the elements of **remain_prob** using **names()** and **V(team_net)$name**.
+Print these initial probabilities.
+
+Then, create a *for* loop to update the initial probabilities *twice*.
+Update the probabilities by matrix multiplying **team_adj** with **remain_prob** and dividing by the *degrees* of each node.
+This result should be added to **remain_prob**, and, then divided by **2**.
+Make sure to overwrite **remain_prob** across the loops.
+Print the updated probabilities.
+
+**Questions 2.2**: Answer these questions:
+(1) Did *Pavle's* initial probability *increase* or *decrease* after the updating?
+(2) After updating, which individual is most likely to leave (i.e., has the smallest probability to remain)?
+
+**Responses 2.2**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
+
+```{r, task2_2}
+
+```
+
+## Task 3: Homophily
+
+For this task, you will compute homophily statistics for the team network.
+
+### Task 3.1
+
+Use **V(team_net)$status[c(5, 6)]** to set the *status* of the previously unknown individuals to **R**.
+Do the same for the *color* attribute of those two individuals; set the color attribute to **blue**.
+
+Create an edge attribute named **label** by using this vector **c("RL", "RR", "RR", "LL", "LL", "RR", "RL", "RR", "RR", "RR", "RL", "RL", "RL", "RR", "RL", "RR", "RR", "RR", "RR", "RR", "RR")**.
+Break-up the vector into three lines of seven for reading clarity in your code.
+Copy the **label** edge attribute to a **color** edge attribute.
+Then, convert an **RR** into a **blue** color, an **LL** into a **red** color, and an **RL** into a **purple** color.
+
+Plot the updated **team_net** using **plot()**.
+Set the edge labels to **NA** and color to **black** and width to **3**.
+Set the layout to **ver_pos**.
+Set the vertex label colors to **white** and size to **35**.
+
+Examine the plot.
+ 
+**Questions 3.1**: Answer these questions:
+(1) How many *red* edges are there in the team network?
+(2) How many *purple* edges are there in the team network?
+
+**Responses 3.1**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
+
+```{r, task3_1}
+
+```
+
+### Task 3.2
+
+Compute four values for the network:
+
+1. compute the *connectedness* of the network using **edge_density()**;
+2. compute the *dyadicity* of the *remain* nodes in the network;
+3. compute the *dyadicity* of the *left* nodes in the network;
+4. compute the *heterophilicity* of the network;
+
+Examine the results.
+ 
+**Questions 3.2**: Answer these questions:
+(1) What proportion of total possible edges exist in the network?
+(2) Is there evidence for *dyadicity* of the *remain* nodes?
+(3) Is there evidence for *dyadicity* of the *left* nodes?
+(4) Is there evidence for *heterophilicity* of nodes in the network?
+
+**Responses 3.2**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
+
+```{r, task3_2}
+
+```
+
+## Task 4: Network Node Measures
+
+For this task, you will compute the node measures for the team network.
+
+### Task 4.1
+
+Compute the following node measures: 
+
+1. degree, 
+2. second-order neighborhood size excluding the focal node, 
+3. number of triangles,
+4. local transitivity,
+5. betweenness centrality,
+6. closeness centrality,
+7. eigenvector centrality,
+8. PageRank,
+9. the number of *remain* nodes in the first-order neighborhood, and
+10. the number of *left* nodes in the first-order neighborhood.
+
+Examine the results.
+
+**Question 4.1**: Answer these questions:
+(1) What is the *betweenness centrality* for *Milan*?
+(2) What is the *second-order neighborhood size* for *Pavle*?
+(3) Is there evidence for *eigenvector centrality* for *Sanja*?
+(4) What is the *PageRank* for *Lazar*?
+
+**Response 4.1**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
+
+```{r, task4_1}
+
+```
+
+## Task 5: Import Data
+
+For this task, you will import data representing an employee network.
+
+### Task 5.1
+
+Use **load()** and **here()** to import **employee_net.rdata** from the **data** folder in the project directory.
+Preview the **nodes** and **edges** data tables via **glimpse()**.
+You will work with the complete network for this assignment.
+
+**Questions 5.1**: Answer these questions:
+(1) What is the *churn* value of the *first* employee?
+(2) Which connection is listed *first*?
+
+**Responses 5.1**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
+
+```{r, task5_1}
+
+```
+
+## Task 6: Table Graph
+
+For this task, you will create a *table graph* and visualize the employee network.
+
+### Task 6.1
+
+Create a *table graph* named **employee_tg** using the **nodes** and **edges** data tables.
+Set the *node key* to **id** and create an *undirected* graph.
+
+Next, update the *node* data table in **employee_tg** by computing **edge_id**, which is equivalent to the *row numbers*.
+Continue with a chained command to update the *edge* data table in **employee_tg** by computing **churn_type**.
+The **churn_type** variable should consist of three categories named **cc**, **ss**, and **cs** to indicate whether the nodes for an edge both *left*, both *remain*, or a mixture of the two, respectively.
+
+Print the updated **employee_tg**.
+
+**Questions 6.1**: Answer these questions:
+(1) What is the **churn_type** of the *first five edges*?
+(2) What is the **churn** of the *first three nodes*?
+
+**Responses 6.1**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
+
+```{r, task6_1}
+
+```
+
+### Task 6.2
+
+Set the random seed of your computer to **1736**.
+Create a new data table named **employee_nodes_samp** from **employee_tg**.
+The **id** variable should be removed and the **edge_id** variable should be converted to a *character* variable.
+The **employee_nodes_samp** data table should consist of **70** randomly sampled nodes from **employee_tg** using **slice_sample()**.
+
+Next, create a new data table named **employee_edges_samp** from **employee_tg**.
+Convert **from** and **to** to *character* variables.
+Filter the rows by **from** and **to** being in **employee_nodes_samp$edge_id**.
+
+Then, create a new *table graph* named **employee_tg_samp** from **employee_nodes_samp** and **employee_edges_samp**.
+Set the *node key* to **edge_id** and create an *undirected* graph.
+
+Print **employee_tg_samp**.
+
+**Questions 6.2**: Answer these questions:
+(1) How many *rows* are there in the *edge* data table of **employee_tg_samp**?
+(2) What is the **churn_type** of the *first three edges*?
+(3) What is the **churn** of the *third node*?
+
+**Responses 6.2**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
+
+```{r, task6_2}
+
+```
+
+### Task 6.3
+
+Create a plot named **employee_net_samp_plot** using **ggraph()** and **employee_tg_samp** to view a representative sample of the network.
+Set the *layout* to **kk**.
+Choose **geom_node_point()** as the node geometry and set **color** to **churn** and **size** to **3**.
+Choose **geom_edge_diagonal()** as the edge geometry and set **color** to **churn_type**, **alpha** to **0.25**, and **width** to **1**.
+Add **scale_color_manual()** to set the node colors to **darkred** and **darkgreen**.
+Add **scale_edge_color_manual()** to set the *churn type* colors to **red**, **orange**, and **green**.
+Place the legend at the bottom.
+Print the plot.
+
+Create another plot named **employee_net_samp_facet_plot** using **ggraph()** and **employee_tg_samp** to view a representative sample of the network.
+Set the *layout* to **kk**.
+Choose **geom_node_point()** as the node geometry and set **color** to **churn** and **size** to **3**.
+Choose **geom_edge_diagonal()** as the edge geometry and set **color** to **churn_type**, **alpha** to **0.25**, and **width** to **1**.
+Add **scale_color_manual()** to set the node colors to **darkred** and **darkgreen**.
+Add **scale_edge_color_manual()** to set the *churn type* colors to **red**, **orange**, and **green**.
+Add **facet_edges()** to facet by **churn_type**.
+Place the legend at the bottom.
+Print the plot.
+
+**Questions 6.3**: Answer these questions:
+(1) Which *edge color* dominates in **employee_net_samp_plot**?
+(2) What do you learn from **employee_net_samp_facet_plot**?
+
+**Responses 6.3**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
+
+```{r, task6_3}
+
+```
+
+## Task 7: Calculate Measures
+
+For this task, you will calculate network measures on the employee network.
+
+### Task 7.1
+
+First, update **employee_tg** by computing the following network measures in the appropriate data tables using the relevant functions:
+
+1. first-order neighborhood size,
+2. second-order neighborhood size,
+3. average degree of neighborhood,
+4. number of triangles,
+5. local transitivity,
+6. betweenness centrality,
+7. closeness centrality,
+8. eigenvector centrality,
+9. PageRank centrality,
+10. edge betweenness centrality,
+11. average edge PageRank centrality,
+
+Print the updated version of **employee_tg** to confirm calculations.
+
+Second, updated **employee_tg** by computing the following node neighborhood measures using **map_local_dbl()** with a *user-defined function* appropriately:
+
+1. number of churners in first-order neighborhood,
+2. number of non-churners in first-order neighborhood,
+3. churn probability of first-order neighborhood,
+4. number of churners in second-order neighborhood,
+5. number of non-churners in second-order neighborhood, and
+6. churn probability of second-order neighborhood.
+
+Remain patient with the calculations.
+Print *wide* the updated version of **employee_tg** to examine calculations.
+
+**Questions 7.1**: Answer these questions:
+(1) What is the *average neighborhood degree* for the *first* listed node?
+(2) What is the *local transitivity* for the *second* listed node?
+(3) What is the *number of non-churners* in the *first-order neighborhood* for the *third* listed node?
+(4) What is the *churn probability* in the *second-order neighborhood* for the *fourth* listed node?
+
+**Responses 7.1**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
+
+```{r, task7_1}
+
+```
+
+### Task 7.2
+
+Extract the *nodes* data table from **employee_tg** and save it as **employee_nodes**.
+Extract the *edges* data table from **employee_tg** and save it as **employee_edges**.
+
+Create **employee_edges_agg** from **employee_edges** by:
+
+1. pivoting longer by **from** and **to** and setting the names to **edge_ndx** and values to **edge_id**,
+2. grouping by **edge_id**, and
+3. summarizing **edge_between** and **mean_page_rank** with the **mean** function.
+
+Update **employee_nodes** by applying **left_join()** with **employee_edges_agg** and joining by **edge_id**.
+Replace any missing values on the network measures with *zero* values.
+Print *wide* the updated version of **employee_nodes** to examine calculations.
+
+**Questions 7.2**: Answer these questions:
+(1) What is the **edge_between** for the *first* listed node?
+(2) What is the **mean_page_rank** for the *second* listed node?
+
+**Responses 7.2**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
+
+```{r, task7_2}
+
+```
+
+## Task 8: Predict Churn
+
+For this task, you will fit logistic regression models to predict employee churn.
+
+### Task 8.1
+
+Set the random seed of your computer to **1736**.
+Create a new object named **employee_nodes_split** using **initial_split()** applied to **employee_nodes**.
+Split the data into *70%* training and *30%* testing.
+
+Plot the correlations among the node network measures on the training data.
+Appropriately apply **training()**, **select()**, **correlate()**, **rearrange()**, **shave()**, and **rplot()** to **employee_nodes_split**.
+Alter the *theme* of the plot to make the x-axis labels angled at *45* degrees.
+
+Examine the plot.
+
+**Questions 8.1**:  Answer these questions:
+(1) Is the correlation between **degree_2** and **mean_page_rank** *positive* or *negative*?
+(2) Is the correlation between **churn_neigh_1** and **eigen** or **closeness** and **eigen** stronger?
+
+**Responses 8.1**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
+
+```{r, task8_1}
+
+```
+
+### Task 8.2
+
+First, create a modeling *workflow* named **glm_wrkflw** for *logistic regression* using the **glm** engine. 
+
+Second, fit a *logistic regression* model on the *training* data of **employee_nodes_split** where **churn** is predicted by four network node measures: (1) **degree_2**, (2) **eigen**, (3) **page_rank**, (4) and **n_triangle**.
+Save the model as **glm_1**.
+
+Third, apply **predict()** to **glm_1** to calculate *probabilities* of **churn** in the *testing* data of **employee_nodes_split**.
+Bind the predictions with the *testing* data.
+Save the result as **glm_1_probs**.
+
+Fourth, apply **roc_curve()** to **glm_1_probs**.
+Save the result as **glm_1_roc**.
+Plot **glm_1_roc** using **autoplot()**.
+
+Fifth, calculate the area under the receiver-operator characteristic (ROC) curve for **glm_1_probs** using **roc_auc()**.
+
+Examine the results.
+
+**Questions 8.2**: What is the area under the ROC curve for this model?
+
+**Responses 8.2**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
+
+```{r, task8_2}
+
+```
+
+### Task 8.3
+
+Fit a second *logistic regression* model using **glm_wrkflw** on the *training* data of **employee_nodes_split** where **churn** is predicted by two neighborhood node measures: (1) **neigh_churn_prob_1** and (2) **neigh_churn_prob_2**.
+Save the model as **glm_2**.
+
+Then, apply **predict()** to **glm_2** to calculate *probabilities* of **churn** in the *testing* data of **employee_nodes_split**.
+Bind the predictions with the *testing* data.
+Save the result as **glm_2_probs**.
+
+Then, apply **roc_curve()** to **glm_2_probs**.
+Save the result as **glm_2_roc**.
+Apply **autoplot()** to plot **glm_1_roc** and add a **geom_path()** layer using **glm_2_roc**.
+
+Then, calculate the area under the receiver-operator characteristic (ROC) curve for **glm_2_probs** using **roc_auc()**.
+
+Examine the results.
+
+**Questions 8.3**: Answer these questions:
+(1) What is the area under the ROC curve for this model?
+(2) Does the *first* or *second* model predict better?
+
+**Responses 8.3**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
+
+```{r, task8_3}
+
+```
+
+### Task 8.4
+
+Fit a third *logistic regression* model using **glm_wrkflw** on the *training* data of **employee_nodes_split** where **churn** is predicted by seven network node measures: (1) **neigh_churn_prob_1**, (2) **neigh_churn_prob_2**, (3) **eigen**, (4) **mean_page_rank**, (5) **closeness**, (6) **loc_trans**, and (7) **n_triangle**.
+Save the model as **glm_3**.
+
+Then, apply **predict()** to **glm_3** to calculate *probabilities* of **churn** in the *testing* data of **employee_nodes_split**.
+Bind the predictions with the *testing* data.
+Save the result as **glm_3_probs**.
+
+Then, apply **roc_curve()** to **glm_3_probs**.
+Save the result as **glm_3_roc**.
+
+Apply **ggplot()** to start a plot, add a diagonal reference line with **geom_abline()**, add **glm_1_roc**, **glm_2_roc**, and **glm_3_roc** via **geom_path()**.
+Make sure to name the colors of each path inside of **geom_path()** for each model.
+Add appropriate labels for the axes and legend.
+Use **scale_color_manual()** to label the paths in the legend.
+Use **theme_linedraw()** as the theme.
+Position the legend at the bottom.
+Display the plot.
+
+Then, calculate the area under the receiver-operator characteristic (ROC) curve for **glm_3_probs** using **roc_auc()**.
+
+Examine the results.
+
+**Questions 8.4**: Answer these questions:
+(1) What is the area under the ROC curve for this model?
+(2) Which model predicts the best?
+
+**Responses 8.4**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
+
+```{r, task8_4}
+
+```
+
+## Task 9: Save Objects and Plots
+
+For this task, you will save some of the objects and plots created in this script.
+
+### Task 9.1
+
+Save the following objects into a single *RData* file named **employee_net_objects.rdata** in the **data** folder of the project directory:
+
+1. **employee_tg**,
+2. **employee_nodes**,
+3. **employee_net_samp_plot**,
+4. **glm_wrkflw**, and
+5. **glm_1**, **glm_2**, and **glm_3**.
+
+Save the three plot objects as **png** files into the **plots** folder of the project directory:
+
+1. **employee_net_samp_plot** as **employee_net_samp.png**,
+2. **employee_net_samp_facet_plot** as **employee_net_samp_facet.png**, and
+3. **roc_plot** as **roc.png**.
+
+Alter the *width* and *height* for the plots as needed.
+
+```{r, task9_1}
+
+```
+
+## Task 10: Conceptual Questions
+
+For your last task, you will respond to conceptual questions based on the conceptual lectures for this week.
+
+**Question 10.1**: Describe how to compute *neighbor-based* node metrics in networks.
+
+**Response 10.1**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
+
+**Question 10.2**: What is the difference between *closeness centrality* and *betweenness centrality* of nodes in networks?
+
+**Response 10.2**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
+
+**Question 10.3**: What is a *receiver-operator characteristic* curve?
+
+**Response 10.3**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
