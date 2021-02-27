@@ -138,7 +138,85 @@ Examine the plot.
 **Responses 1.1**: *(1) No, Milena remained; (2) 3 connections to those who remain and 2 connections to those who left the team for Vedran; (3) Vedran, Nikola, Sanja, and Milena*.
 
 ```{r, task1_1}
+team_collab <- data.frame(
+## senders
+  from = c(
+    # first sender
+    "Pavle", "Pavle", "Pavle",
+    # second sender
+    "Ana", "Ana",
+    # third sender
+    "Sanja", "Sanja",
+    # fourth sender
+    "Lazar", "Lazar", "Lazar",
+    # fifth sender
+    "Vedran", "Vedran",
+    # sixth sender
+    "Nikola", "Nikola", "Nikola",
+    # seventh sender
+    "Jelena", "Jelena", "Jelena",
+    # eighth sender
+    "Milena", "Milena", "Sanja"
+),
 
+to = c(
+  #Receivers of first sender
+  "Luka", "Sanja", "Nikola",
+  #Receivers of second sender
+  "Milan", "Vera",
+  #Recievers of third sender
+  "Jelena", "Olga",
+  #Recievers of fourth sender
+  "Milena", "Vedran", "Sanja",
+  #Recievers of fifth sender
+  "Olga", "Vera",
+  #Recivers of sixth sender
+  "Olga", "Lazar", "Milan",
+  #Recievers of seventh sender
+  "Milena", "Nikola", "Vedran",
+  #Recivers of eigth sender
+  "Pavle", "Vedran", "Sanja"
+  )
+)
+
+#converting data table
+team_net <- graph_from_data_frame(
+  team_collab,
+  directed = FALSE
+  )
+
+
+#setting up attributes
+V(team_net)$status <-
+  c("R", "L", "R", "R", "U", "U", "R", "R", "L", "L", "L", "L")
+
+V(team_net)$color <- V(team_net)$status
+
+V(team_net)$color <- str_replace(V(team_net)$color, "R", "blue") 
+
+V(team_net)$color <- str_replace(V(team_net)$color, "L", "red") 
+
+V(team_net)$color <- str_replace(V(team_net)$color, "U", "gray")
+
+#vertex positions
+ver_pos <- cbind(
+  #x-coordinate
+  c(5, 25, 13, 1, 25, 5, 8, 20, 1, 15, 25, 13),
+  #y-coordinate
+  c(20, 1, 23, 13, 16, 3, 10, 20, 25, 2, 10, 8)
+)
+
+#plotting the network
+plot(
+  team_net,
+  edge.label = NA,
+  edge.color = "black",
+  layout = ver_pos,
+  vertex.label = V(team_net)$name,
+  vertex.label.color = "white",
+  vertex.color = V(team_net)$color,
+  vertex.size = 35
+)
 ```
 
 ## Task 2: Relational Neighbor Classifier
@@ -163,7 +241,45 @@ Print **node_summ**.
 **Responses 2.1**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
 
 ```{r, task2_1}
+team_att <- as_long_data_frame(team_net)
 
+#summarizing the sender notes
+node_sender_summ <- team_att %>%
+  group_by(from_name) %>% 
+  summarize(
+    collab_remain = sum(to_status == "R"),
+    collab_left = sum(to_status == "L"),
+    collab_unknown = sum(to_status == "U")
+    ) %>%
+  rename(name = from_name)
+
+#summarize receiver nodes
+node_receiver_summ <- team_att %>%
+group_by(to_name) %>%
+  summarize(
+    collab_remain = sum(from_status == "R"),
+    collab_left = sum(from_status == "L"),
+    collab_unknown = sum(from_status == "U") ) %>%
+  rename(name = to_name)
+
+
+#relational neighbor classifier
+node_summ <- node_sender_summ %>%
+  bind_rows(node_receiver_summ) %>% 
+  group_by(name) %>%
+  summarize(
+    across(
+      .cols = everything(),
+      .fns = sum
+      ),
+    .groups = "drop" ) %>%
+  mutate(
+    tot_known = collab_remain + collab_left,
+    remain_prob_known = collab_remain / tot_known
+    )
+
+
+node_summ
 ```
 
 ### Task 2.2
