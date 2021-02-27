@@ -307,7 +307,35 @@ Print the updated probabilities.
 **Responses 2.2**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
 
 ```{r, task2_2}
+#plotting network
+plot(
+  team_net,
+  layout = ver_pos,
+  vertex.color = "gray",
+  vertex.size = 35
+  )
 
+#extracting adjacency matrices
+team_adj <- as_adjacency_matrix(team_net)
+
+set.seed(1736)
+
+remain_prob <- runif(12, 0, 1)
+
+names(remain_prob) <- V(team_net)$name
+
+remain_prob
+
+
+#for loop to iterate on intial probabilities
+for (ndx in 1:2) {
+  remain_prob <-
+    (team_adj %*% remain_prob /
+     degree(team_net) +
+     remain_prob) / 2 
+}
+
+remain_prob
 ```
 
 ## Task 3: Homophily
