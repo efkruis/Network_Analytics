@@ -5,16 +5,16 @@
     "dirty" : false,
     "encoding" : "UTF-8",
     "folds" : "",
-    "hash" : "1893137238",
+    "hash" : "0",
     "id" : "79EA24EF",
-    "lastKnownWriteTime" : 1614452010,
-    "last_content_update" : 1614452010683,
+    "lastKnownWriteTime" : 1614613628,
+    "last_content_update" : 1614613628518,
     "path" : "~/Library/Mobile Documents/com~apple~CloudDocs/year_2/WQ21/mgt_592/assignments/Network_Analytics/Scripts/network_analytics_assignment.rmd",
     "project_path" : "Scripts/network_analytics_assignment.rmd",
     "properties" : {
         "chunk_output_type" : "console",
-        "cursorPosition" : "520,0",
-        "scrollLine" : "501"
+        "cursorPosition" : "687,32",
+        "scrollLine" : "649"
     },
     "read_only" : false,
     "read_only_alternatives" : [

@@ -518,6 +518,8 @@ load(
   here("data", "employee_net.rdata") )
 
 glimpse(nodes)
+
+glimpse(edges)
 ```
 
 ## Task 6: Table Graph
@@ -542,7 +544,33 @@ Print the updated **employee_tg**.
 **Responses 6.1**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
 
 ```{r, task6_1}
+#creating a table graph
+employee_tg <- tbl_graph(
+  nodes = nodes,
+  edges = edges,
+  directed = FALSE,
+  node_key = "id"
+)
 
+#create data table
+employee_tg <- employee_tg %>%
+  ## activate nodes
+activate(nodes) %>%
+  mutate(
+    edge_id = row_number()
+    ) %>%
+  activate(edges) %>%
+  mutate(
+      churn_type = case_when(
+        .N()$churn[from] == "Yes" & .N()$churn[to] == "Yes" ~ "cc",
+        .N()$churn[from] == "No" & .N()$churn[to] == "No" ~ "ss",
+        .N()$churn[from] == "Yes" & .N()$churn[to] == "No" ~ "cs",
+        .N()$churn[from] == "No" & .N()$churn[to] == "Yes" ~ "cs"
+        )
+      )
+
+## print
+employee_tg
 ```
 
 ### Task 6.2
@@ -569,7 +597,42 @@ Print **employee_tg_samp**.
 **Responses 6.2**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
 
 ```{r, task6_2}
+set.seed(1736)
 
+#Sample nodes
+employee_nodes_samp <-employee_tg %>%
+  activate(nodes) %>% 
+  as_tibble() %>%
+  mutate(
+    id = NULL,
+    edge_id = as.character(edge_id)
+    ) %>%
+  slice_sample(n = 70)
+
+#Sample edges
+employee_edges_samp <- employee_tg %>%
+  activate(edges) %>% 
+  as_tibble() %>%
+  mutate(
+    from = as.character(from),
+    to = as.character(to)
+    ) %>%
+  filter(
+    from %in% employee_nodes_samp$edge_id, 
+    to %in% employee_nodes_samp$edge_id
+    )
+
+
+#create table
+employee_tg_samp <- tbl_graph(
+  nodes = employee_nodes_samp,
+  edges = employee_edges_samp,
+  directed = FALSE,
+  node_key = "edge_id"
+  )
+
+
+employee_tg_samp
 ```
 
 ### Task 6.3
@@ -600,6 +663,32 @@ Print the plot.
 **Responses 6.3**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
 
 ```{r, task6_3}
+#create employee net samp plot
+employee_net_samp_plot <- ggraph(
+  employee_tg_samp,
+  layout = "kk" )+
+  geom_edge_diagonal(aes(color = churn_type), alpha = 0.25, width = 1) +
+  geom_node_point(aes(color = churn), size = 3) +
+  scale_color_manual(values = c("darkred", "darkgreen")) +
+  scale_edge_color_manual(values = c("red", "orange", "green")) +
+  theme(legend.position = "bottom")
+
+employee_net_samp_plot
+
+#create employee net samp facet plot
+employee_net_samp_facet_plot <- ggraph(
+  employee_tg_samp,
+  layout = "kk"
+  )+
+  geom_edge_diagonal(aes(color = churn_type), alpha = 0.25, width = 1) +
+  geom_node_point(aes(color = churn), size = 3) +
+  scale_color_manual(values = c("darkred", "darkgreen")) +
+  scale_edge_color_manual(values = c("red", "orange", "green")) + 
+  facet_edges(~ churn_type) +
+  theme(legend.position = "bottom")
+
+employee_net_samp_facet_plot
+
 
 ```
 
