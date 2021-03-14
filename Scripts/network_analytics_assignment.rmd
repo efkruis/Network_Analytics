@@ -735,7 +735,74 @@ Print *wide* the updated version of **employee_tg** to examine calculations.
 **Responses 7.1**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
 
 ```{r, task7_1}
+##calculating attributes
+employee_tg <- employee_tg %>%
+  activate(nodes) %>%
+  mutate(
+    degree_1 = local_size(order = 1, mindist = 1), 
+    degree_2 = local_size(order = 2, mindist = 2),
+    neigh_avg_deg = local_ave_degree(),
+    n_triangle = local_triangles(),
+    loc_trans = local_transitivity(),
+    between = centrality_betweenness(directed = FALSE, normalized = TRUE), 
+    closeness = centrality_closeness(normalized = TRUE),
+    eigen = centrality_eigen(),
+    page_rank = centrality_pagerank(directed = FALSE)
+    ) %>%
+  activate(edges) %>%
+  mutate(
+    edge_between = centrality_edge_betweenness(directed = FALSE),
+    mean_page_rank = (.N()$page_rank[from] + .N()$page_rank[to]) / 2)
 
+
+employee_tg
+
+##computing adjacency-based attributes
+employee_tg <- employee_tg %>%
+  activate(nodes) %>% 
+  mutate(
+    churn_neigh_1 = map_local_dbl( 
+      order = 1,
+      mindist = 1,
+      .f = function(neighborhood, ...) {
+        sum(
+          as_tibble(neighborhood, active = "nodes")$churn == "Yes" 
+          )
+        } 
+      ),
+    non_churn_neigh_1 = map_local_dbl( 
+      order = 1,
+      mindist = 1,
+      .f = function(neighborhood, ...) {
+        sum(
+          as_tibble(neighborhood, active = "nodes")$churn == "No" 
+          )
+        } 
+      ),
+    neigh_churn_prob_1 = churn_neigh_1 / (churn_neigh_1 + non_churn_neigh_1),
+    churn_neigh_2 = map_local_dbl(
+      order = 2,
+      mindist = 2,
+      .f = function(neighborhood, ...) {
+        sum(
+          as_tibble(neighborhood, active = "nodes")$churn == "Yes" 
+          )
+        } 
+      ),
+    non_churn_neigh_2 = map_local_dbl( 
+      order = 2,
+      mindist = 2,
+      .f = function(neighborhood, ...) {
+        sum(
+          as_tibble(neighborhood, active = "nodes")$churn == "No" 
+          )
+        } 
+      ),
+    neigh_churn_prob_2 = churn_neigh_2 / (churn_neigh_2 + non_churn_neigh_2)
+    )
+employee_tg %>%
+  activate(nodes) %>% 
+  print(width = Inf)
 ```
 
 ### Task 7.2
@@ -760,7 +827,46 @@ Print *wide* the updated version of **employee_nodes** to examine calculations.
 **Responses 7.2**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
 
 ```{r, task7_2}
+#extracting nodes as tibbles
+employee_nodes <- employee_tg %>%
+  activate(nodes) %>%
+  as_tibble()
 
+
+employee_edges <- employee_tg %>%
+  activate(edges) %>% 
+  as_tibble()
+
+
+##aggregating edges as tibble
+employee_edges_agg <- employee_edges %>%
+  pivot_longer(
+    cols = c(from, to),
+    names_to = "edge_ndx", 
+    values_to = "edge_id"
+    ) %>%
+  group_by(edge_id) %>% 
+  summarize(
+    across(
+      .cols = c(edge_between, mean_page_rank),
+      .fns = mean
+      ) 
+    )
+
+
+##join nodes with edges
+employee_nodes <- employee_nodes %>%
+  left_join(employee_edges_agg, by = "edge_id") %>% 
+  mutate(
+    across(
+      .cols = degree_1:mean_page_rank, 
+      .fns = ~ replace_na(.x, 0)
+      ) 
+    )
+
+#calling data
+employee_nodes %>% 
+  print(width = Inf)
 ```
 
 ## Task 8: Predict Churn
