@@ -892,7 +892,24 @@ Examine the plot.
 **Responses 8.1**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
 
 ```{r, task8_1}
+## training and testing split
+set.seed(1736)
 
+## create split
+employee_nodes_split <- initial_split(
+  employee_nodes,
+  prop = 0.7 )
+
+employee_nodes_split %>%
+  training() %>%
+  select(degree_1:mean_page_rank) %>% 
+  correlate() %>%
+  rearrange() %>%
+  shave() %>% 
+  plot() +
+  theme(
+    axis.text.x = element_text(angle = 45, vjust = 0.5)
+    )
 ```
 
 ### Task 8.2
@@ -919,7 +936,41 @@ Examine the results.
 **Responses 8.2**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
 
 ```{r, task8_2}
+##logistic regression workflow
+glm_wrkflw <- workflow() %>%
+  add_model(
+    logistic_reg() %>%
+      set_engine("glm")
+    )
 
+##first logistic regression model
+glm_1 <- glm_wrkflw %>% 
+  add_formula(
+    churn ~ degree_2 + eigen +
+      page_rank + n_triangle
+    ) %>%
+  fit(training(employee_nodes_split))
+
+##evaluate predictions
+glm_1_probs <- predict(
+  glm_1,
+  testing(employee_nodes_split),
+  type = "prob"
+  ) %>%
+  bind_cols(testing(employee_nodes_split))
+
+
+##ROC curve
+glm_1_roc <- glm_1_probs %>%
+  roc_curve(churn, .pred_Yes)
+
+
+autoplot(glm_1_roc)
+
+
+##area under ROC curve
+glm_1_probs %>%
+  roc_auc(churn, .pred_Yes)
 ```
 
 ### Task 8.3
@@ -946,7 +997,38 @@ Examine the results.
 **Responses 8.3**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
 
 ```{r, task8_3}
+## second logistic regression model 
+glm_2 <- glm_wrkflw %>%
+  add_formula(
+    churn ~ neigh_churn_prob_1 + neigh_churn_prob_2
+    ) %>%
+  fit(training(employee_nodes_split))
 
+##evaluate predictions
+glm_2_probs <- predict(
+  glm_2,
+  testing(employee_nodes_split),
+  type = "prob"
+  ) %>%
+  bind_cols(testing(employee_nodes_split))
+
+
+## ROC curve
+glm_2_roc <- glm_2_probs %>%
+  roc_curve(churn, .pred_Yes)
+
+##plotting first model
+autoplot(glm_1_roc) +
+  geom_path(
+    data = glm_2_roc,
+    mapping = aes(x = 1 - specificity, y = sensitivity),
+    color = "#FDE725FF"
+    )
+
+
+##area under ROC curve
+glm_2_probs %>%
+  roc_auc(churn, .pred_Yes)
 ```
 
 ### Task 8.4
@@ -980,7 +1062,56 @@ Examine the results.
 **Responses 8.4**: *WRITE YOUR ANSWER BETWEEN THESE ASTERISKS*.
 
 ```{r, task8_4}
+## second logistic regression model 
+glm_3 <- glm_wrkflw %>%
+  add_formula(
+    churn ~ neigh_churn_prob_1 + neigh_churn_prob_2 +
+      eigen + mean_page_rank + closeness + loc_trans + n_triangle ) %>%
+  fit(training(employee_nodes_split))
 
+
+##evaluate predictions
+glm_3_probs <- predict(
+  glm_3,
+  testing(employee_nodes_split), 
+  type = "prob"
+) %>%
+  bind_cols(testing(employee_nodes_split))
+
+
+##ROC curve
+glm_3_roc <- glm_3_probs %>%
+  roc_curve(churn, .pred_Yes)
+
+
+### save plot
+roc_plot <- ggplot() +
+  geom_abline(intercept = 0, slope = 1, linetype = 2, color = "gray") +
+  geom_path(
+    glm_1_roc,
+    mapping = aes(x = 1 - specificity, y = sensitivity, color = "glm1")
+  )+
+  geom_path(
+    data = glm_2_roc,
+    mapping = aes(x = 1 - specificity, y = sensitivity, color = "glm2")
+    )+
+  geom_path(
+    data = glm_3_roc,
+    mapping = aes(x = 1 - specificity, y = sensitivity, color = "glm3"),
+    )+
+  scale_color_manual(
+    values = c("glm1" = "#000000", "glm2" = "#FDE725FF", "glm3" = "#21908CFF")
+    )+
+  labs(x = "False Positive Rate", y = "True Positive Rate", color = "Model") +
+  theme_linedraw() +
+  theme(legend.position = "bottom")
+
+
+roc_plot
+
+##area under ROC curve
+glm_3_probs %>%
+  roc_auc(churn, .pred_Yes)
 ```
 
 ## Task 9: Save Objects and Plots
@@ -1006,7 +1137,38 @@ Save the three plot objects as **png** files into the **plots** folder of the pr
 Alter the *width* and *height* for the plots as needed.
 
 ```{r, task9_1}
+##save working data
+save(
+  employee_tg,
+  employee_nodes,
+  employee_net_samp_plot,
+  glm_wrkflw,
+  glm_1, glm_2, glm_3,
+  file = here("data", "employee_net_objects.rdata")
+  )
 
+
+## save plots to folder in project directory 
+ggsave(
+  here("plots", "employee_net_samp.png"),
+  plot = employee_net_samp_plot,
+  units = "in", width = 9, height = 9
+  )
+
+
+## save a single plot to a file
+ggsave(
+  here("plots", "employee_net_samp_facet.png"), 
+  plot = employee_net_samp_facet_plot,
+  units = "in", width = 12, height = 6
+  )
+
+
+## save a single plot to a file
+ggsave(
+  here("plots", "roc.png"),
+  plot = roc_plot,
+  units = "in", width = 12, height = 6)
 ```
 
 ## Task 10: Conceptual Questions
